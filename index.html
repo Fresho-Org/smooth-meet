@@ -3,37 +3,103 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meeting Queue Prototype</title>
+    <title>Smooth Meet Queue</title>
     <script src="https://www.gstatic.com/meetjs/addons/1.1.0/meet.addons.js"></script>
     <style>
-        body { font-family: sans-serif; padding: 20px; text-align: center; }
+        body { font-family: sans-serif; text-align: center; padding: 20px; transition: background-color 0.3s; }
+        button { 
+            background-color: #0b57d0; color: white; border: none; 
+            padding: 12px 24px; font-size: 16px; border-radius: 24px; 
+            cursor: pointer; margin-top: 20px; font-weight: bold;
+        }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        #message-box { 
+            margin-top: 30px; padding: 15px; background: #f1f3f4; 
+            border-radius: 8px; text-align: left;
+        }
     </style>
 </head>
 <body>
     
-    <h1>Hello World 🌍</h1>
-    <p>The queue prototype is alive.</p>
+    <h1>Multiplayer Test 📡</h1>
+    <p id="status">⏳ Waiting for Meet SDK...</p>
+
+    <button id="pingBtn" disabled>Ping Everyone!</button>
+    
+    <div id="message-box">
+        <strong>Latest Ping:</strong> <br>
+        <span id="latestPing">Waiting for messages...</span>
+    </div>
 
     <script>
-        // 2. Initialize the Add-on to tell Meet this iframe is ready
+        let coDoingClient; // Global variable to hold our multiplayer connection
+
+        // --- Helper: Convert JSON to Bytes (Required by Google Meet) ---
+        function toBytes(data) {
+            return new TextEncoder().encode(JSON.stringify(data));
+        }
+
+        // --- Helper: Convert Bytes back to JSON ---
+        function fromBytes(bytes) {
+            return JSON.parse(new TextDecoder().decode(bytes));
+        }
+
         async function initAddon() {
             try {
-                // Creates the session bridge between your iframe and Google Meet
+                // 1. Create the base session
                 const session = await meet.addon.createAddonSession({
-                    cloudProjectNumber: '139985780449' // We will get this from Google Cloud
+                    cloudProjectNumber: '139985780449' 
                 });
                 
-                // Tells Meet to render this as a side panel
+                // 2. Initialize the side panel UI
                 await session.createSidePanelClient();
-                console.log("Add-on initialized successfully!");
+
+                // 3. Connect to the Multiplayer (Co-Doing) Channel
+                coDoingClient = await session.createCoDoingClient({
+                    activityTitle: "Queue Prototype",
+                    
+                    // 4. This runs EVERY time someone (including you) sends a message
+                    onCoDoingStateChanged(coDoingState) {
+                        const incomingData = fromBytes(coDoingState.bytes);
+                        
+                        // Update the UI with the message
+                        document.getElementById('latestPing').innerText = 
+                            `"${incomingData.message}" at ${incomingData.time}`;
+                        
+                        // Flash the background green so we visually see the update
+                        document.body.style.backgroundColor = "#e6ffe6";
+                        setTimeout(() => document.body.style.backgroundColor = "white", 400);
+                    }
+                });
+
+                // Enable the button now that we are connected
+                document.getElementById('status').innerText = "✅ Connected to Meeting!";
+                document.getElementById('pingBtn').disabled = false;
 
             } catch (error) {
-                console.error("Failed to initialize Meet Add-on:", error);
+                console.error("🚨 SDK Initialization Error:", error);
+                document.getElementById('status').innerText = "❌ Error: Check Console";
             }
         }
 
-        // Run on load
-        window.onload = initAddon;
+        // --- The Button Click Event ---
+        document.getElementById('pingBtn').addEventListener('click', () => {
+            if (!coDoingClient) return;
+            
+            // Create the data we want to send
+            const myState = {
+                message: "Hello from a teammate!",
+                time: new Date().toLocaleTimeString()
+            };
+
+            // Broadcast it to everyone in the meeting!
+            coDoingClient.broadcastStateUpdate({
+                bytes: toBytes(myState)
+            });
+        });
+
+        // Start everything
+        initAddon();
     </script>
 </body>
 </html>

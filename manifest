@@ -1,0 +1,19 @@
+{
+  "addOns": {
+    "common": {
+      "name": "Smooth Meet",
+      "logoUrl": "https://www.gstatic.com/images/branding/product/1x/meet_48dp.png"
+    },
+    "meet": {
+      "web": {
+        "sidePanelUrl": "https://fresho-org.github.io/smooth-meet/",
+        "supportsScreenSharing": false,
+        "addOnOrigins": [
+          "https://fresho-org.github.io" 
+        ],
+        "logoUrl": "https://www.gstatic.com/images/branding/product/1x/meet_48dp.png",
+        "darkModeLogoUrl": "https://www.gstatic.com/images/branding/product/1x/meet_48dp.png"
+      }
+    }
+  }
+}
