@@ -10,47 +10,46 @@
         body { font-family: 'Google Sans', Roboto, Arial, sans-serif; padding: 20px; margin: 0; background: #fff; color: #3c4043; }
         h2 { font-size: 16px; font-weight: 500; margin: 0 0 15px 0; }
         
-        /* Main Interaction Buttons */
-        .controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+        /* Layout Controls */
+        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
         
-        #btn-raise { 
-            background-color: #1a73e8; color: white; border: none; padding: 12px; 
-            border-radius: 24px; cursor: pointer; font-weight: 500; font-size: 14px; 
-            transition: background 0.2s;
-        }
-        #btn-raise:hover { background-color: #1765cc; }
-        #btn-raise:disabled { background-color: #f1f3f4; color: #3c404361; cursor: not-allowed; }
+        button { border: none; padding: 12px; border-radius: 24px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s; }
+        button:disabled { background-color: #f1f3f4 !important; color: #3c404361 !important; border: none !important; cursor: not-allowed; }
 
-        #btn-robot { 
-            background-color: #fff; color: #5f6368; border: 1px solid #dadce0; padding: 8px; 
-            border-radius: 24px; cursor: pointer; font-size: 12px; transition: background 0.2s;
-        }
-        #btn-robot:hover { background-color: #f8f9fa; }
+        /* Signal Buttons */
+        #btn-CLARIFY { background-color: #fef7e0; color: #b06000; border: 1px solid #fbdf9a; }
+        #btn-CLARIFY:hover { background-color: #fdecc8; }
 
-        /* Queue List Styling */
+        #btn-SPEAK { background-color: #1a73e8; color: white; }
+        #btn-SPEAK:hover { background-color: #1765cc; }
+
+        #btn-robot { background-color: #fff; color: #5f6368; border: 1px solid #dadce0; font-size: 11px; margin-top: 10px; }
+
+        /* Queue List */
         #queue-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid #f1f3f4; }
-        .queue-item { 
-            display: flex; justify-content: space-between; align-items: center; 
-            padding: 12px 0; border-bottom: 1px solid #f1f3f4; font-size: 14px;
-        }
-        .my-item { color: #1a73e8; font-weight: 500; }
-
-        .done-btn { 
-            background: none; color: #5f6368; border: 1px solid #dadce0; padding: 4px 12px; 
-            border-radius: 4px; font-size: 11px; cursor: pointer;
-        }
-        .done-btn:hover { background: #f1f3f4; color: #202124; }
+        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f4; font-size: 14px; }
         
-        #identity-banner { font-size: 11px; color: #70757a; margin-bottom: 20px; text-align: center; line-height: 1.4; }
+        /* Signal-Specific Styling */
+        .item-CLARIFY { border-left: 4px solid #f9ab00; padding-left: 8px; }
+        .badge-signal { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 8px; text-transform: uppercase; font-weight: bold; }
+        .badge-CLARIFY { color: #b06000; background: #fef7e0; }
+        
+        .item-SPEAK { padding-left: 12px; }
+
+        .my-item { color: #1a73e8; font-weight: 500; }
+        .done-btn { background: none; color: #5f6368; border: 1px solid #dadce0; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+        
+        #identity-banner { font-size: 11px; color: #70757a; margin-bottom: 20px; text-align: center; }
     </style>
 </head>
 <body>
     
-    <div id="identity-banner">Connecting to Google Meet...</div>
+    <div id="identity-banner">Connecting...</div>
     
     <div class="controls">
-        <button id="btn-raise" disabled>🙋 Raise Hand</button>
-        <button id="btn-robot" disabled>🤖 Add Robot (Test)</button>
+        <button id="btn-CLARIFY" disabled></button>
+        <button id="btn-SPEAK" disabled></button>
+        <button id="btn-robot" disabled>🤖 Add Random Robot</button>
     </div>
 
     <h2>Speaking Queue</h2>
@@ -61,6 +60,12 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+        // --- THE MASTER CONFIG ---
+        const SIGNALS = {
+            CLARIFY: { id: 'CLARIFY', priority: 1, label: 'Clarify', icon: '❓' },
+            SPEAK:   { id: 'SPEAK',   priority: 2, label: 'Speak',   icon: '🙋' }
+        };
 
         const firebaseConfig = {
             databaseURL: "https://smooth-meet-default-rtdb.asia-southeast1.firebasedatabase.app/",
@@ -74,33 +79,27 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        let queueRef; 
+        let queueRef, roomCode;
 
-        // Generate Identity
-        let myId = localStorage.getItem("smoothMeetUUID");
-        if (!myId) {
-            myId = "User-" + crypto.randomUUID().split('-')[0];
-            localStorage.setItem("smoothMeetUUID", myId);
-        }
+        let myId = localStorage.getItem("smoothMeetUUID") || ("User-" + crypto.randomUUID().split('-')[0]);
+        localStorage.setItem("smoothMeetUUID", myId);
+
+        // 1. Label the buttons from the config immediately
+        Object.values(SIGNALS).forEach(sig => {
+            const btn = document.getElementById(`btn-${sig.id}`);
+            if (btn) btn.innerText = `${sig.icon} ${sig.label}`;
+        });
 
         async function initAddon() {
             try {
-                const session = await meet.addon.createAddonSession({
-                    cloudProjectNumber: '139985780449' 
-                });
-                
+                const session = await meet.addon.createAddonSession({ cloudProjectNumber: '139985780449' });
                 const sidePanelClient = await session.createSidePanelClient();
                 const meetingInfo = await sidePanelClient.getMeetingInfo();
-                const roomCode = meetingInfo.meetingCode;
-
+                roomCode = meetingInfo.meetingCode;
                 queueRef = ref(db, `meetings/${roomCode}/queue`);
 
-                document.getElementById('identity-banner').innerHTML = `
-                    <b>ID:</b> ${myId} &nbsp; | &nbsp; <b>Room:</b> ${roomCode}
-                `;
-
-                document.getElementById('btn-raise').disabled = false;
-                document.getElementById('btn-robot').disabled = false;
+                document.getElementById('identity-banner').innerHTML = `<b>ID:</b> ${myId} | <b>Room:</b> ${roomCode}`;
+                document.querySelectorAll('button').forEach(b => b.disabled = false);
 
                 onValue(queueRef, (snapshot) => {
                     const queueListEl = document.getElementById('queue-list');
@@ -108,60 +107,60 @@
 
                     if (!snapshot.exists()) {
                         queueListEl.innerHTML = '<li style="color: #70757a; font-size: 13px; padding-top: 10px;">Queue is empty</li>';
-                        document.getElementById('btn-raise').disabled = false; 
+                        toggleButtons(false);
                         return;
                     }
 
-                    let queueArray = [];
-                    let amIInQueue = false;
+                    const queueArray = Object.entries(snapshot.val()).map(([key, val]) => ({ key, ...val }));
+                    const amIInQueue = queueArray.some(item => item.name === myId);
+                    toggleButtons(amIInQueue);
 
-                    snapshot.forEach(child => {
-                        const item = child.val();
-                        queueArray.push({ key: child.key, ...item });
-                        if (item.name === myId) amIInQueue = true; 
-                    });
-
-                    document.getElementById('btn-raise').disabled = amIInQueue;
-                    queueArray.sort((a, b) => a.timestamp - b.timestamp);
+                    // Sort: Priority (asc), then Time (asc)
+                    const getPrio = (type) => SIGNALS[type]?.priority || 99;
+                    queueArray.sort((a, b) => (getPrio(a.type) - getPrio(b.type)) || (a.timestamp - b.timestamp));
 
                     queueArray.forEach((item, index) => {
+                        const isMe = item.name === myId;
+                        const sig = SIGNALS[item.type] || { label: '?', priority: 99 };
+                        
                         const li = document.createElement('li');
-                        li.className = 'queue-item';
-                        if (item.name === myId) li.classList.add('my-item');
+                        li.className = `queue-item ${isMe ? 'my-item' : ''} item-${item.type}`;
                         
                         li.innerHTML = `
-                            <span>${index + 1}. ${item.name}</span>
-                            <button class="done-btn" data-key="${item.key}">Done</button>
+                            <span>
+                                ${index + 1}. 
+                                ${item.type === 'CLARIFY' ? `<span class="badge-signal badge-CLARIFY">${sig.label}</span>` : ''}
+                                ${item.name}
+                            </span>
+                            <button class="done-btn" onclick="deleteItem('${item.key}')">Done</button>
                         `;
                         queueListEl.appendChild(li);
                     });
-
-                    // Event delegation for "Done" buttons
-                    document.querySelectorAll('.done-btn').forEach(btn => {
-                        btn.addEventListener('click', (e) => {
-                            const itemKey = e.target.getAttribute('data-key');
-                            remove(ref(db, `meetings/${roomCode}/queue/${itemKey}`));
-                        });
-                    });
                 });
-
-            } catch (error) {
-                console.error("Add-on init failed:", error);
-            }
+            } catch (e) { console.error(e); }
         }
 
-        // Logic for Real User
-        document.getElementById('btn-raise').addEventListener('click', () => {
-            if (!queueRef) return;
-            push(queueRef, { name: myId, timestamp: Date.now() });
-        });
+        // Global function for the 'Done' button (using onclick in HTML for conciseness)
+        window.deleteItem = (key) => {
+            remove(ref(db, `meetings/${roomCode}/queue/${key}`));
+        };
 
-        // Logic for Robot Tester
-        document.getElementById('btn-robot').addEventListener('click', () => {
-            if (!queueRef) return;
-            const robotNum = Math.floor(Math.random() * 1000);
-            push(queueRef, { name: "🤖 Robot-" + robotNum, timestamp: Date.now() });
-        });
+        function toggleButtons(disabled) {
+            Object.keys(SIGNALS).forEach(id => {
+                const btn = document.getElementById(`btn-${id}`);
+                if (btn) btn.disabled = disabled;
+            });
+        }
+
+        // Action Handlers using the IDs from our config
+        document.getElementById('btn-CLARIFY').onclick = () => push(queueRef, { name: myId, timestamp: Date.now(), type: 'CLARIFY' });
+        document.getElementById('btn-SPEAK').onclick = () => push(queueRef, { name: myId, timestamp: Date.now(), type: 'SPEAK' });
+        
+        document.getElementById('btn-robot').onclick = () => {
+            const rId = Math.floor(Math.random() * 1000);
+            const type = Math.random() > 0.7 ? 'CLARIFY' : 'SPEAK';
+            push(queueRef, { name: "🤖 Bot-" + rId, timestamp: Date.now(), type: type });
+        };
 
         initAddon();
     </script>
