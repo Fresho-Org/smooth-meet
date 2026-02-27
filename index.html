@@ -49,7 +49,6 @@
         button {
             border: none;
             padding: 16px 20px;
-            /* Slightly adjusted for 50/50 split */
             border-radius: 30px;
             cursor: pointer;
             font-weight: 500;
@@ -274,7 +273,6 @@
             banner.innerHTML = `<b>${myId}</b> | Room: ${roomCode || '...'}`;
         }
 
-        // Setup UI
         Object.values(SIGNALS).forEach(sig => {
             const btn = document.getElementById(`btn-${sig.id}`);
             if (btn) { btn.innerText = `${sig.icon} ${sig.label}`; btn.title = sig.tip; }
@@ -291,6 +289,11 @@
                 const sidePanelClient = await session.createSidePanelClient();
                 const meetingInfo = await sidePanelClient.getMeetingInfo();
                 roomCode = meetingInfo.meetingCode;
+
+                // Triggers the "Join Activity" banner for everyone in the room.
+                try {
+                    await sidePanelClient.startActivity({ mainStageUrl: window.location.href });
+                } catch (e) { console.log("Activity banner already active."); }
 
                 queueRef = ref(db, `meetings/${roomCode}/queue`);
                 chatRef = ref(db, `meetings/${roomCode}/chat`);
@@ -315,16 +318,13 @@
                     }
                 }, { onlyOnce: true });
 
-                // --- QUEUE LOGIC ---
                 onValue(queueRef, (snapshot) => {
                     const el = document.getElementById('queue-list');
                     el.innerHTML = "";
                     if (!snapshot.exists()) return;
-
                     const queueArray = Object.entries(snapshot.val()).map(([key, val]) => ({ key, ...val }));
                     const getPrio = (t) => SIGNALS[t]?.priority ?? 99;
                     queueArray.sort((a, b) => (getPrio(a.type) - getPrio(b.type)) || (a.timestamp - b.timestamp));
-
                     queueArray.forEach((item, index) => {
                         const li = document.createElement('li');
                         li.className = `queue-item ${item.name === myId ? 'my-item' : ''}`;
@@ -353,7 +353,6 @@
             } catch (e) { console.error(e); }
         }
 
-        // Chat Input Handler
         document.getElementById('chat-input').addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && e.target.value.trim() !== "") {
                 push(chatRef, { user: myId, text: e.target.value, timestamp: Date.now() });
