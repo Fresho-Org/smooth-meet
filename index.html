@@ -1,51 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smooth Meet Queue</title>
     <script src="https://www.gstatic.com/meetjs/addons/1.1.0/meet.addons.js"></script>
-    
+
     <style>
-        body { font-family: 'Google Sans', Roboto, Arial, sans-serif; padding: 20px; margin: 0; background: #fff; color: #3c4043; }
-        h2 { font-size: 16px; font-weight: 500; margin: 0 0 15px 0; }
-        
-        /* Layout Controls */
-        .controls { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
-        
-        button { border: none; padding: 12px; border-radius: 24px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.2s; }
-        button:disabled { background-color: #f1f3f4 !important; color: #3c404361 !important; border: none !important; cursor: not-allowed; }
+        body {
+            font-family: 'Google Sans', Roboto, Arial, sans-serif;
+            padding: 20px;
+            margin: 0;
+            background: #fff;
+            color: #3c4043;
+        }
+
+        h2 {
+            font-size: 16px;
+            font-weight: 500;
+            margin: 0 0 15px 0;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        button {
+            border: none;
+            padding: 12px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        button:disabled {
+            background-color: #f1f3f4 !important;
+            color: #3c404361 !important;
+            border: none !important;
+            cursor: not-allowed;
+        }
 
         /* Signal Buttons */
-        #btn-CLARIFY { background-color: #fef7e0; color: #b06000; border: 1px solid #fbdf9a; }
-        #btn-CLARIFY:hover { background-color: #fdecc8; }
+        #btn-CLARIFY {
+            background-color: #fef7e0;
+            color: #b06000;
+            border: 1px solid #fbdf9a;
+        }
 
-        #btn-SPEAK { background-color: #1a73e8; color: white; }
-        #btn-SPEAK:hover { background-color: #1765cc; }
+        #btn-CLARIFY:hover {
+            background-color: #fdecc8;
+        }
 
-        #btn-robot { background-color: #fff; color: #5f6368; border: 1px solid #dadce0; font-size: 11px; margin-top: 10px; }
+        #btn-SPEAK {
+            background-color: #1a73e8;
+            color: white;
+        }
+
+        #btn-SPEAK:hover {
+            background-color: #1765cc;
+        }
+
+        #btn-robot {
+            background-color: #fff;
+            color: #5f6368;
+            border: 1px solid #dadce0;
+            font-size: 11px;
+            margin-top: 10px;
+        }
 
         /* Queue List */
-        #queue-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid #f1f3f4; }
-        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #f1f3f4; font-size: 14px; }
-        
-        /* Signal-Specific Styling */
-        .item-CLARIFY { border-left: 4px solid #f9ab00; padding-left: 8px; }
-        .badge-signal { font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 8px; text-transform: uppercase; font-weight: bold; }
-        .badge-CLARIFY { color: #b06000; background: #fef7e0; }
-        
-        .item-SPEAK { padding-left: 12px; }
+        #queue-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            border-top: 1px solid #f1f3f4;
+        }
 
-        .my-item { color: #1a73e8; font-weight: 500; }
-        .done-btn { background: none; color: #5f6368; border: 1px solid #dadce0; padding: 4px 12px; border-radius: 4px; font-size: 11px; cursor: pointer; }
-        
-        #identity-banner { font-size: 11px; color: #70757a; margin-bottom: 20px; text-align: center; }
+        .queue-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f1f3f4;
+            font-size: 14px;
+        }
+
+        .badge-CLARIFY {
+            font-size: 10px;
+            color: #b06000;
+            background: #fef7e0;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+            text-transform: uppercase;
+            font-weight: bold;
+            border: 1px solid #fbdf9a;
+        }
+
+        .my-item {
+            color: #1a73e8;
+            font-weight: 500;
+        }
+
+        .done-btn {
+            background: none;
+            color: #5f6368;
+            border: 1px solid #dadce0;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        #identity-banner {
+            font-size: 11px;
+            color: #70757a;
+            margin-bottom: 20px;
+            text-align: center;
+        }
     </style>
 </head>
+
 <body>
-    
+
     <div id="identity-banner">Connecting...</div>
-    
+
     <div class="controls">
         <button id="btn-CLARIFY" disabled></button>
         <button id="btn-SPEAK" disabled></button>
@@ -61,10 +146,10 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // --- THE MASTER CONFIG ---
+        // MASTER CONFIG
         const SIGNALS = {
             CLARIFY: { id: 'CLARIFY', priority: 1, label: 'Clarify', icon: '❓' },
-            SPEAK:   { id: 'SPEAK',   priority: 2, label: 'Speak',   icon: '🙋' }
+            SPEAK: { id: 'SPEAK', priority: 2, label: 'Speak', icon: '🙋' }
         };
 
         const firebaseConfig = {
@@ -84,10 +169,9 @@
         let myId = localStorage.getItem("smoothMeetUUID") || ("User-" + crypto.randomUUID().split('-')[0]);
         localStorage.setItem("smoothMeetUUID", myId);
 
-        // 1. Label the buttons from the config immediately
+        // Apply Labels
         Object.values(SIGNALS).forEach(sig => {
-            const btn = document.getElementById(`btn-${sig.id}`);
-            if (btn) btn.innerText = `${sig.icon} ${sig.label}`;
+            document.getElementById(`btn-${sig.id}`).innerText = `${sig.icon} ${sig.label}`;
         });
 
         async function initAddon() {
@@ -103,7 +187,7 @@
 
                 onValue(queueRef, (snapshot) => {
                     const queueListEl = document.getElementById('queue-list');
-                    queueListEl.innerHTML = ""; 
+                    queueListEl.innerHTML = "";
 
                     if (!snapshot.exists()) {
                         queueListEl.innerHTML = '<li style="color: #70757a; font-size: 13px; padding-top: 10px;">Queue is empty</li>';
@@ -112,24 +196,23 @@
                     }
 
                     const queueArray = Object.entries(snapshot.val()).map(([key, val]) => ({ key, ...val }));
-                    const amIInQueue = queueArray.some(item => item.name === myId);
-                    toggleButtons(amIInQueue);
+                    toggleButtons(queueArray.some(item => item.name === myId));
 
-                    // Sort: Priority (asc), then Time (asc)
+                    // Sort: Priority first, then Time
                     const getPrio = (type) => SIGNALS[type]?.priority || 99;
                     queueArray.sort((a, b) => (getPrio(a.type) - getPrio(b.type)) || (a.timestamp - b.timestamp));
 
                     queueArray.forEach((item, index) => {
                         const isMe = item.name === myId;
-                        const sig = SIGNALS[item.type] || { label: '?', priority: 99 };
-                        
+                        const sig = SIGNALS[item.type];
+
                         const li = document.createElement('li');
-                        li.className = `queue-item ${isMe ? 'my-item' : ''} item-${item.type}`;
-                        
+                        li.className = `queue-item ${isMe ? 'my-item' : ''}`;
+
                         li.innerHTML = `
                             <span>
                                 ${index + 1}. 
-                                ${item.type === 'CLARIFY' ? `<span class="badge-signal badge-CLARIFY">${sig.label}</span>` : ''}
+                                ${item.type === 'CLARIFY' ? `<span class="badge-CLARIFY">${sig.label}</span>` : ''}
                                 ${item.name}
                             </span>
                             <button class="done-btn" onclick="deleteItem('${item.key}')">Done</button>
@@ -140,29 +223,27 @@
             } catch (e) { console.error(e); }
         }
 
-        // Global function for the 'Done' button (using onclick in HTML for conciseness)
-        window.deleteItem = (key) => {
-            remove(ref(db, `meetings/${roomCode}/queue/${key}`));
-        };
+        window.deleteItem = (key) => remove(ref(db, `meetings/${roomCode}/queue/${key}`));
 
         function toggleButtons(disabled) {
-            Object.keys(SIGNALS).forEach(id => {
-                const btn = document.getElementById(`btn-${id}`);
-                if (btn) btn.disabled = disabled;
-            });
+            Object.keys(SIGNALS).forEach(id => { document.getElementById(`btn-${id}`).disabled = disabled; });
         }
 
-        // Action Handlers using the IDs from our config
+        // Action Handlers
         document.getElementById('btn-CLARIFY').onclick = () => push(queueRef, { name: myId, timestamp: Date.now(), type: 'CLARIFY' });
         document.getElementById('btn-SPEAK').onclick = () => push(queueRef, { name: myId, timestamp: Date.now(), type: 'SPEAK' });
-        
+
+        // Dynamic Robot Handler
         document.getElementById('btn-robot').onclick = () => {
+            if (!queueRef) return;
+            const keys = Object.keys(SIGNALS);
+            const randomType = keys[Math.floor(Math.random() * keys.length)];
             const rId = Math.floor(Math.random() * 1000);
-            const type = Math.random() > 0.7 ? 'CLARIFY' : 'SPEAK';
-            push(queueRef, { name: "🤖 Bot-" + rId, timestamp: Date.now(), type: type });
+            push(queueRef, { name: "🤖 Bot-" + rId, timestamp: Date.now(), type: randomType });
         };
 
         initAddon();
     </script>
 </body>
+
 </html>
