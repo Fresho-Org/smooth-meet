@@ -1,66 +1,76 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smooth Meet Queue</title>
+    <title>Smooth Meet Queue & Chat</title>
     <script src="https://www.gstatic.com/meetjs/addons/1.1.0/meet.addons.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <style>
-        body { font-family: 'Google Sans', Roboto, Arial, sans-serif; padding: 15px; margin: 0; background: #fff; color: #3c4043; }
-        h2 { font-size: 14px; font-weight: 500; margin: 15px 0 10px 0; color: #5f6368; text-transform: uppercase; letter-spacing: 0.5px; }
-        .controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
-        button { border: none; padding: 10px 16px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.2s; text-align: left; }
-        button:disabled { background-color: #f1f3f4 !important; color: #3c404361 !important; border: none !important; cursor: not-allowed; }
+        /* Modernized Google-style UI */
+        body { font-family: 'Google Sans', Roboto, Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; margin: 0; background: #fff; color: #3c4043; overflow: hidden; }
+        
+        #identity-banner { font-size: 10px; color: #70757a; padding: 10px; text-align: center; border-bottom: 1px solid #f1f3f4; }
+        .avatar { width: 20px; height: 20px; border-radius: 50%; vertical-align: middle; }
 
-        #btn-PROCESS { background-color: #f3e5f5; color: #7b1fa2; border: 1px solid #e1bee7; }
-        #btn-CLARIFY { background-color: #fef7e0; color: #b06000; border: 1px solid #fbdf9a; }
-        #btn-DIRECT { background-color: #e6fffa; color: #00897b; border: 1px solid #b2dfdb; }
-        #btn-SPEAK { background-color: #1a73e8; color: white; }
-        #btn-robot { background-color: #fff; color: #5f6368; border: 1px solid #dadce0; font-size: 11px; margin-top: 5px; text-align: center; }
+        /* Top Section: Queue */
+        #queue-section { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; }
+        .controls { display: flex; flex-direction: column; gap: 6px; margin-bottom: 15px; }
+        button { border: none; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-weight: 500; font-size: 12px; transition: 0.2s; text-align: left; }
+        button:disabled { background-color: #f1f3f4; color: #3c404361; cursor: not-allowed; }
+        
+        #btn-PROCESS { background: #f3e5f5; color: #7b1fa2; }
+        #btn-CLARIFY { background: #fef7e0; color: #b06000; }
+        #btn-DIRECT  { background: #e6fffa; color: #00897b; }
+        #btn-SPEAK   { background: #1a73e8; color: white; }
 
-        #queue-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid #f1f3f4; }
-        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f1f3f4; font-size: 13px; }
-        .badge { font-size: 9px; padding: 2px 6px; border-radius: 4px; margin-right: 8px; text-transform: uppercase; font-weight: bold; border: 1px solid rgba(0, 0, 0, 0.1); }
+        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f3f4; font-size: 13px; }
+        .badge { font-size: 9px; padding: 2px 5px; border-radius: 4px; margin-right: 5px; text-transform: uppercase; font-weight: bold; }
         .badge-PROCESS { background: #f3e5f5; color: #7b1fa2; }
         .badge-CLARIFY { background: #fef7e0; color: #b06000; }
-        .badge-DIRECT { background: #e6fffa; color: #00897b; }
+        .badge-DIRECT  { background: #e6fffa; color: #00897b; }
 
-        .user-cell { display: flex; align-items: center; gap: 8px; }
-        .avatar { width: 20px; height: 20px; border-radius: 50%; background: #eee; }
-        
-        .my-item { color: #1a73e8; font-weight: 500; background: #f8faff; margin: 0 -15px; padding-left: 15px; padding-right: 15px; }
-        .done-btn { background: none; color: #9aa0a6; border: 1px solid #dadce0; padding: 3px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; }
-        .done-btn:hover { background: #f1f3f4; color: #3c4043; }
+        /* Bottom Section: Chat */
+        #chat-section { height: 250px; border-top: 1px solid #dadce0; background: #f8f9fa; display: flex; flex-direction: column; }
+        #chat-header { padding: 8px 15px; font-size: 12px; font-weight: bold; color: #5f6368; display: flex; justify-content: space-between; }
+        #chat-messages { flex: 1; overflow-y: auto; padding: 10px 15px; font-size: 12px; }
+        .msg { margin-bottom: 8px; line-height: 1.4; }
+        .msg b { color: #1a73e8; margin-right: 5px; }
 
-        #identity-banner { font-size: 10px; color: #70757a; margin-bottom: 15px; text-align: center; border-bottom: 1px solid #f1f3f4; padding-bottom: 10px; }
+        #chat-input-area { padding: 10px; background: #fff; border-top: 1px solid #dadce0; display: flex; gap: 5px; }
+        #chat-input { flex: 1; border: 1px solid #dadce0; border-radius: 18px; padding: 8px 12px; font-size: 12px; outline: none; }
+        #chat-input:focus { border-color: #1a73e8; }
     </style>
 </head>
 
 <body>
-    <div id="identity-banner">Connecting...</div>
+    <div id="identity-banner">Connecting to Google...</div>
 
-    <div class="controls">
-        <button id="btn-PROCESS" disabled></button>
-        <button id="btn-CLARIFY" disabled></button>
-        <button id="btn-DIRECT" disabled></button>
-        <button id="btn-SPEAK" disabled></button>
-        <button id="btn-robot" disabled>🤖 Add Random Robot (Test)</button>
+    <div id="queue-section">
+        <div class="controls">
+            <button id="btn-PROCESS" disabled></button>
+            <button id="btn-CLARIFY" disabled></button>
+            <button id="btn-DIRECT" disabled></button>
+            <button id="btn-SPEAK" disabled></button>
+        </div>
+        <h2 style="font-size:12px; color:#5f6368; margin: 0 0 10px 0;">SPEAKING QUEUE</h2>
+        <ul id="queue-list" style="list-style:none; padding:0; margin:0;"></ul>
     </div>
 
-    <h2>Speaking Queue</h2>
-    <ul id="queue-list">
-        <li style="color: #70757a; font-size: 12px; padding-top: 10px;">Queue is empty</li>
-    </ul>
+    <div id="chat-section">
+        <div id="chat-header"><span>CHAT</span></div>
+        <div id="chat-messages"></div>
+        <div id="chat-input-area">
+            <input type="text" id="chat-input" placeholder="Send a message to the room..." autocomplete="off">
+        </div>
+    </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, onValue, remove, limitToLast, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const GOOGLE_CLIENT_ID = "139985780449-fbb9qvek9pe0tno7382k10t6lukrg2ji.apps.googleusercontent.com";
-
         const SIGNALS = {
             PROCESS: { id: 'PROCESS', priority: 0, label: 'Process Point', icon: '⚙️', tip: 'Request alternative process: reconvening, breakout groups, etc.' },
             CLARIFY: { id: 'CLARIFY', priority: 1, label: 'Clarify', icon: '❓', tip: 'Quick question to clarify what was said.' },
@@ -80,135 +90,103 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        let queueRef, roomCode;
+        let queueRef, chatRef, roomCode;
 
-        // Identity State
         let myId = localStorage.getItem("smoothMeetName") || "Anonymous";
         let myPhoto = localStorage.getItem("smoothMeetPhoto") || "";
 
-        // Helper: Simple JWT Decoder
-        function decodeJwt(token) {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            return JSON.parse(window.atob(base64));
-        }
+        function decodeJwt(token) { return JSON.parse(window.atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
 
-        // --- SSO HANDLER ---
-        window.handleCredentialResponse = (response) => {
-            const user = decodeJwt(response.credential);
-            myId = user.name;
-            myPhoto = user.picture;
-            
-            // Persist locally
+        window.handleCredentialResponse = (r) => {
+            const user = decodeJwt(r.credential);
+            myId = user.name; myPhoto = user.picture;
             localStorage.setItem("smoothMeetName", myId);
             localStorage.setItem("smoothMeetPhoto", myPhoto);
-
             updateBanner();
         };
 
         function updateBanner() {
             const banner = document.getElementById('identity-banner');
-            const photoHtml = myPhoto ? `<img src="${myPhoto}" class="avatar" />` : '';
-            banner.innerHTML = `<div class="user-cell" style="justify-content:center;">${photoHtml} <b>${myId}</b> | Room: ${roomCode || '...'}</div>`;
+            banner.innerHTML = `<b>${myId}</b> | Room: ${roomCode || '...'}`;
         }
 
-        // Initialize Buttons
+        // Setup UI
         Object.values(SIGNALS).forEach(sig => {
             const btn = document.getElementById(`btn-${sig.id}`);
-            if (btn) {
-                btn.innerText = `${sig.icon} ${sig.label}`;
-                btn.title = sig.tip;
-            }
+            if (btn) { btn.innerText = `${sig.icon} ${sig.label}`; btn.title = sig.tip; }
         });
 
         async function initAddon() {
             try {
-                // Initialize SSO (One Tap Prompt)
                 if (window.google) {
-                    google.accounts.id.initialize({
-                        client_id: GOOGLE_CLIENT_ID,
-                        callback: handleCredentialResponse,
-                        auto_select: true // Try to sign in silently
-                    });
-                    google.accounts.id.prompt(); // Show the 'Continue as...' prompt
+                    google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: handleCredentialResponse, auto_select: true });
+                    google.accounts.id.prompt();
                 }
 
                 const session = await meet.addon.createAddonSession({ cloudProjectNumber: '139985780449' });
                 const sidePanelClient = await session.createSidePanelClient();
                 const meetingInfo = await sidePanelClient.getMeetingInfo();
                 roomCode = meetingInfo.meetingCode;
+                
                 queueRef = ref(db, `meetings/${roomCode}/queue`);
+                chatRef = ref(db, `meetings/${roomCode}/chat`);
 
                 updateBanner();
                 document.querySelectorAll('button').forEach(b => b.disabled = false);
 
+                // --- QUEUE LOGIC ---
                 onValue(queueRef, (snapshot) => {
-                    const queueListEl = document.getElementById('queue-list');
-                    queueListEl.innerHTML = "";
-
-                    if (!snapshot.exists()) {
-                        queueListEl.innerHTML = '<li style="color: #70757a; font-size: 12px; padding-top: 10px;">Queue is empty</li>';
-                        toggleButtons(false);
-                        return;
-                    }
-
+                    const el = document.getElementById('queue-list');
+                    el.innerHTML = "";
+                    if (!snapshot.exists()) return;
+                    
                     const queueArray = Object.entries(snapshot.val()).map(([key, val]) => ({ key, ...val }));
-                    toggleButtons(queueArray.some(item => item.name === myId));
-
-                    const getPrio = (type) => SIGNALS[type]?.priority ?? 99;
+                    const getPrio = (t) => SIGNALS[t]?.priority ?? 99;
                     queueArray.sort((a, b) => (getPrio(a.type) - getPrio(b.type)) || (a.timestamp - b.timestamp));
 
                     queueArray.forEach((item, index) => {
-                        const isMe = item.name === myId;
-                        const sig = SIGNALS[item.type];
                         const li = document.createElement('li');
-                        li.className = `queue-item ${isMe ? 'my-item' : ''}`;
-
+                        li.className = `queue-item ${item.name === myId ? 'my-item' : ''}`;
                         li.innerHTML = `
-                            <div class="user-cell">
-                                <span>${index + 1}.</span>
-                                ${sig.priority < 3 ? `<span class="badge badge-${item.type}">${sig.label}</span>` : ''}
-                                ${item.photo ? `<img src="${item.photo}" class="avatar" />` : ''}
-                                <span>${item.name}</span>
-                            </div>
+                            <span>${index + 1}. ${SIGNALS[item.type].priority < 3 ? `<span class="badge badge-${item.type}">${item.type}</span>` : ''} ${item.name}</span>
                             <button class="done-btn" onclick="deleteItem('${item.key}')">Done</button>
                         `;
-                        queueListEl.appendChild(li);
+                        el.appendChild(li);
                     });
                 });
+
+                // --- CHAT LOGIC ---
+                onValue(query(chatRef, limitToLast(20)), (snapshot) => {
+                    const el = document.getElementById('chat-messages');
+                    el.innerHTML = "";
+                    snapshot.forEach(child => {
+                        const m = child.val();
+                        const div = document.createElement('div');
+                        div.className = "msg";
+                        div.innerHTML = `<b>${m.user}:</b> ${m.text}`;
+                        el.appendChild(div);
+                    });
+                    el.scrollTop = el.scrollHeight; // Auto-scroll to bottom
+                });
+
             } catch (e) { console.error(e); }
         }
 
-        window.deleteItem = (key) => remove(ref(db, `meetings/${roomCode}/queue/${key}`));
-
-        function toggleButtons(disabled) {
-            Object.keys(SIGNALS).forEach(id => {
-                const btn = document.getElementById(`btn-${id}`);
-                if (btn) btn.disabled = disabled;
-            });
-        }
-
-        Object.keys(SIGNALS).forEach(id => {
-            document.getElementById(`btn-${id}`).onclick = () => {
-                push(queueRef, { 
-                    name: myId, 
-                    photo: myPhoto, 
-                    timestamp: Date.now(), 
-                    type: id 
-                });
-            };
+        // Chat Input Handler
+        document.getElementById('chat-input').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim() !== "") {
+                push(chatRef, { user: myId, text: e.target.value, timestamp: Date.now() });
+                e.target.value = "";
+            }
         });
 
-        document.getElementById('btn-robot').onclick = () => {
-            if (!queueRef) return;
-            const keys = Object.keys(SIGNALS);
-            const randomType = keys[Math.floor(Math.random() * keys.length)];
-            const rId = Math.floor(Math.random() * 1000);
-            push(queueRef, { name: "🤖 Bot-" + rId, photo: "", timestamp: Date.now(), type: randomType });
-        };
+        window.deleteItem = (key) => remove(ref(db, `meetings/${roomCode}/queue/${key}`));
+
+        Object.keys(SIGNALS).forEach(id => {
+            document.getElementById(`btn-${id}`).onclick = () => push(queueRef, { name: myId, photo: myPhoto, timestamp: Date.now(), type: id });
+        });
 
         initAddon();
     </script>
 </body>
-
 </html>
