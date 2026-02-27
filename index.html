@@ -7,29 +7,50 @@
     <script src="https://www.gstatic.com/meetjs/addons/1.1.0/meet.addons.js"></script>
     
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; transition: background-color 0.3s; }
-        button { background-color: #0b57d0; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 24px; cursor: pointer; margin-top: 20px; font-weight: bold; }
-        button:disabled { background-color: #ccc; cursor: not-allowed; }
-        #message-box { margin-top: 30px; padding: 15px; background: #f1f3f4; border-radius: 8px; text-align: left; }
+        body { font-family: sans-serif; padding: 20px; margin: 0; background: #fff; }
+        h2 { font-size: 18px; margin-top: 0; color: #333; }
+        
+        /* The Single Button */
+        #btn-raise { 
+            background-color: #1a73e8; color: white; border: none; padding: 14px; 
+            border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; 
+            width: 100%; margin-bottom: 30px; transition: opacity 0.2s;
+        }
+        #btn-raise:hover { opacity: 0.9; }
+        #btn-raise:disabled { background-color: #ccc; cursor: not-allowed; }
+        
+        /* The Queue List */
+        #queue-list { list-style: none; padding: 0; margin: 0; }
+        .queue-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 12px; border-bottom: 1px solid #eee; font-size: 15px;
+        }
+        .my-item { background-color: #f0f4f9; font-weight: bold; } /* Highlight user's own row */
+
+        .done-btn { 
+            background: #f1f3f4; color: #444; padding: 6px 12px; 
+            border: none; border-radius: 4px; font-size: 12px; cursor: pointer;
+            font-weight: bold; transition: background 0.2s;
+        }
+        .done-btn:hover { background: #e8eaed; }
+        
+        #identity { font-size: 12px; color: #666; margin-bottom: 15px; text-align: center; }
     </style>
 </head>
 <body>
     
-    <h1>Firebase Multiplayer 📡</h1>
-    <p id="status">⏳ Waiting for Meet SDK...</p>
+    <div id="identity">Assigning ID...</div>
+    <button id="btn-raise" disabled>🙋 Raise Hand</button>
 
-    <button id="pingBtn" disabled>Ping Everyone!</button>
-    
-    <div id="message-box">
-        <strong>Latest Ping:</strong> <br>
-        <span id="latestPing">Waiting for messages...</span>
-    </div>
+    <h2>Speaking Queue</h2>
+    <ul id="queue-list">
+        <li style="color: #666; font-size: 14px;">⏳ Connecting to queue...</li>
+    </ul>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, onValue, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // Your web app's Firebase configuration
         const firebaseConfig = {
             databaseURL: "https://smooth-meet-default-rtdb.asia-southeast1.firebasedatabase.app/",
             apiKey: "AIzaSyAtTCUtPIhW0sWFFf-REKKp3t-fOTS4ons",
@@ -40,52 +61,90 @@
             appId: "1:139985780449:web:86cca73a8da365dd7081a0"
         };
 
-        // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        const queueRef = ref(db, 'prototype-room/queue');
 
-        // We use a hardcoded room name for the prototype. 
-        // Later we will dynamically pull the Meet ID!
-        const meetingPath = "prototype-room"; 
+        // --- IDENTITY: Generate or load a UUID ---
+        let myId = localStorage.getItem("smoothMeetUUID");
+        if (!myId) {
+            // Generates a short, readable random ID like "User-a1b2c3d4"
+            myId = "User-" + crypto.randomUUID().split('-')[0];
+            localStorage.setItem("smoothMeetUUID", myId);
+        }
+        document.getElementById('identity').innerText = "You are: " + myId;
 
         async function initAddon() {
             try {
                 // Initialize Meet Add-on UI
-                // ⚠️ REPLACE WITH YOUR 12-DIGIT MEET PROJECT NUMBER
                 const session = await meet.addon.createAddonSession({
                     cloudProjectNumber: '139985780449' 
                 });
                 await session.createSidePanelClient();
 
-                document.getElementById('status').innerText = "✅ Connected to Meet & Firebase!";
-                document.getElementById('pingBtn').disabled = false;
+                document.getElementById('btn-raise').disabled = false;
 
-                // --- FIREBASE LISTENER (Receiving Data) ---
-                const pingRef = ref(db, meetingPath + '/lastPing');
-                onValue(pingRef, (snapshot) => {
-                    const data = snapshot.val();
-                    if (data) {
-                        // Update UI when anyone clicks the button
-                        document.getElementById('latestPing').innerText = `"${data.message}" at ${data.time}`;
-                        
-                        // Flash background green
-                        document.body.style.backgroundColor = "#e6ffe6";
-                        setTimeout(() => document.body.style.backgroundColor = "white", 400);
+                // --- FIREBASE: Listen for Queue Updates ---
+                onValue(queueRef, (snapshot) => {
+                    const queueListEl = document.getElementById('queue-list');
+                    queueListEl.innerHTML = ""; // Clear current list
+
+                    if (!snapshot.exists()) {
+                        queueListEl.innerHTML = '<li style="color: #666; font-size: 14px;">Queue is currently empty.</li>';
+                        document.getElementById('btn-raise').disabled = false; // Re-enable if empty
+                        return;
                     }
+
+                    // 1. Convert Firebase object to an Array
+                    let queueArray = [];
+                    let amIInQueue = false;
+
+                    snapshot.forEach(child => {
+                        const item = child.val();
+                        queueArray.push({ key: child.key, ...item });
+                        if (item.name === myId) amIInQueue = true; // Check if we are already in the list
+                    });
+
+                    // Disable button if user is already in the queue
+                    document.getElementById('btn-raise').disabled = amIInQueue;
+
+                    // 2. Sort chronologically
+                    queueArray.sort((a, b) => a.timestamp - b.timestamp);
+
+                    // 3. Render the HTML
+                    queueArray.forEach((item, index) => {
+                        const li = document.createElement('li');
+                        li.className = 'queue-item';
+                        // Add a slight background highlight if it's the current user
+                        if (item.name === myId) li.classList.add('my-item');
+                        
+                        li.innerHTML = `
+                            <span><strong>${index + 1}.</strong> ${item.name}</span>
+                            <button class="done-btn" data-key="${item.key}">Done</button>
+                        `;
+                        queueListEl.appendChild(li);
+                    });
+
+                    // 4. Attach click listeners to "Done" buttons
+                    document.querySelectorAll('.done-btn').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            const itemKey = e.target.getAttribute('data-key');
+                            remove(ref(db, `prototype-room/queue/${itemKey}`));
+                        });
+                    });
                 });
 
             } catch (error) {
-                console.error("🚨 SDK Initialization Error:", error);
-                document.getElementById('status').innerText = "❌ Error: Check Console";
+                console.error("SDK Error:", error);
+                document.getElementById('queue-list').innerHTML = '<li style="color: red;">Failed to connect to Meet.</li>';
             }
         }
 
-        // --- FIREBASE WRITER (Sending Data) ---
-        document.getElementById('pingBtn').addEventListener('click', () => {
-            const pingRef = ref(db, meetingPath + '/lastPing');
-            set(pingRef, {
-                message: "Hello from a teammate!",
-                time: new Date().toLocaleTimeString()
+        // --- FIREBASE: Send to Queue ---
+        document.getElementById('btn-raise').addEventListener('click', () => {
+            push(queueRef, {
+                name: myId,
+                timestamp: Date.now()
             });
         });
 
