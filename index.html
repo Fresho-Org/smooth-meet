@@ -5,23 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Smooth Meet Queue</title>
     <script src="https://www.gstatic.com/meetjs/addons/1.1.0/meet.addons.js"></script>
+    
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; transition: background-color 0.3s; }
-        button { 
-            background-color: #0b57d0; color: white; border: none; 
-            padding: 12px 24px; font-size: 16px; border-radius: 24px; 
-            cursor: pointer; margin-top: 20px; font-weight: bold;
-        }
+        button { background-color: #0b57d0; color: white; border: none; padding: 12px 24px; font-size: 16px; border-radius: 24px; cursor: pointer; margin-top: 20px; font-weight: bold; }
         button:disabled { background-color: #ccc; cursor: not-allowed; }
-        #message-box { 
-            margin-top: 30px; padding: 15px; background: #f1f3f4; 
-            border-radius: 8px; text-align: left;
-        }
+        #message-box { margin-top: 30px; padding: 15px; background: #f1f3f4; border-radius: 8px; text-align: left; }
     </style>
 </head>
 <body>
     
-    <h1>Multiplayer Test 📡</h1>
+    <h1>Firebase Multiplayer 📡</h1>
     <p id="status">⏳ Waiting for Meet SDK...</p>
 
     <button id="pingBtn" disabled>Ping Everyone!</button>
@@ -31,50 +25,58 @@
         <span id="latestPing">Waiting for messages...</span>
     </div>
 
-    <script>
-        let coDoingClient; // Global variable to hold our multiplayer connection
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // --- Helper: Convert JSON to Bytes (Required by Google Meet) ---
-        function toBytes(data) {
-            return new TextEncoder().encode(JSON.stringify(data));
-        }
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "firebase/app";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
 
-        // --- Helper: Convert Bytes back to JSON ---
-        function fromBytes(bytes) {
-            return JSON.parse(new TextDecoder().decode(bytes));
-        }
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+        apiKey: "AIzaSyAtTCUtPIhW0sWFFf-REKKp3t-fOTS4ons",
+        authDomain: "smooth-meet.firebaseapp.com",
+        projectId: "smooth-meet",
+        storageBucket: "smooth-meet.firebasestorage.app",
+        messagingSenderId: "139985780449",
+        appId: "1:139985780449:web:86cca73a8da365dd7081a0"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+
+        // We use a hardcoded room name for the prototype. 
+        // Later we will dynamically pull the Meet ID!
+        const meetingPath = "prototype-room"; 
 
         async function initAddon() {
             try {
-                // 1. Create the base session
+                // Initialize Meet Add-on UI
+                // ⚠️ REPLACE WITH YOUR 12-DIGIT MEET PROJECT NUMBER
                 const session = await meet.addon.createAddonSession({
                     cloudProjectNumber: '139985780449' 
                 });
-                
-                // 2. Initialize the side panel UI
                 await session.createSidePanelClient();
 
-                // 3. Connect to the Multiplayer (Co-Doing) Channel
-                coDoingClient = await session.createCoDoingClient({
-                    activityTitle: "Queue Prototype",
-                    
-                    // 4. This runs EVERY time someone (including you) sends a message
-                    onCoDoingStateChanged(coDoingState) {
-                        const incomingData = fromBytes(coDoingState.bytes);
+                document.getElementById('status').innerText = "✅ Connected to Meet & Firebase!";
+                document.getElementById('pingBtn').disabled = false;
+
+                // --- FIREBASE LISTENER (Receiving Data) ---
+                const pingRef = ref(db, meetingPath + '/lastPing');
+                onValue(pingRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        // Update UI when anyone clicks the button
+                        document.getElementById('latestPing').innerText = `"${data.message}" at ${data.time}`;
                         
-                        // Update the UI with the message
-                        document.getElementById('latestPing').innerText = 
-                            `"${incomingData.message}" at ${incomingData.time}`;
-                        
-                        // Flash the background green so we visually see the update
+                        // Flash background green
                         document.body.style.backgroundColor = "#e6ffe6";
                         setTimeout(() => document.body.style.backgroundColor = "white", 400);
                     }
                 });
-
-                // Enable the button now that we are connected
-                document.getElementById('status').innerText = "✅ Connected to Meeting!";
-                document.getElementById('pingBtn').disabled = false;
 
             } catch (error) {
                 console.error("🚨 SDK Initialization Error:", error);
@@ -82,23 +84,15 @@
             }
         }
 
-        // --- The Button Click Event ---
+        // --- FIREBASE WRITER (Sending Data) ---
         document.getElementById('pingBtn').addEventListener('click', () => {
-            if (!coDoingClient) return;
-            
-            // Create the data we want to send
-            const myState = {
+            const pingRef = ref(db, meetingPath + '/lastPing');
+            set(pingRef, {
                 message: "Hello from a teammate!",
                 time: new Date().toLocaleTimeString()
-            };
-
-            // Broadcast it to everyone in the meeting!
-            coDoingClient.broadcastStateUpdate({
-                bytes: toBytes(myState)
             });
         });
 
-        // Start everything
         initAddon();
     </script>
 </body>
