@@ -7,36 +7,55 @@
     <script src="https://www.gstatic.com/meetjs/addons/1.1.0/meet.addons.js"></script>
     
     <style>
-        body { font-family: sans-serif; padding: 20px; margin: 0; background: #fff; }
-        h2 { font-size: 18px; margin-top: 0; color: #333; }
+        body { font-family: 'Google Sans', Roboto, Arial, sans-serif; padding: 20px; margin: 0; background: #fff; color: #3c4043; }
+        h2 { font-size: 16px; font-weight: 500; margin: 0 0 15px 0; }
+        
+        /* Main Interaction Buttons */
+        .controls { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
         
         #btn-raise { 
-            background-color: #1a73e8; color: white; border: none; padding: 14px; 
-            border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 16px; 
-            width: 100%; margin-bottom: 25px; transition: opacity 0.2s;
+            background-color: #1a73e8; color: white; border: none; padding: 12px; 
+            border-radius: 24px; cursor: pointer; font-weight: 500; font-size: 14px; 
+            transition: background 0.2s;
         }
-        #btn-raise:hover { opacity: 0.9; }
-        #btn-raise:disabled { background-color: #ccc; cursor: not-allowed; }
-        
-        #queue-list { list-style: none; padding: 0; margin: 0; }
-        .queue-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; font-size: 15px; }
-        .my-item { background-color: #f0f4f9; font-weight: bold; }
+        #btn-raise:hover { background-color: #1765cc; }
+        #btn-raise:disabled { background-color: #f1f3f4; color: #3c404361; cursor: not-allowed; }
 
-        .done-btn { background: #f1f3f4; color: #444; padding: 6px 12px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; transition: background 0.2s; }
-        .done-btn:hover { background: #e8eaed; }
+        #btn-robot { 
+            background-color: #fff; color: #5f6368; border: 1px solid #dadce0; padding: 8px; 
+            border-radius: 24px; cursor: pointer; font-size: 12px; transition: background 0.2s;
+        }
+        #btn-robot:hover { background-color: #f8f9fa; }
+
+        /* Queue List Styling */
+        #queue-list { list-style: none; padding: 0; margin: 0; border-top: 1px solid #f1f3f4; }
+        .queue-item { 
+            display: flex; justify-content: space-between; align-items: center; 
+            padding: 12px 0; border-bottom: 1px solid #f1f3f4; font-size: 14px;
+        }
+        .my-item { color: #1a73e8; font-weight: 500; }
+
+        .done-btn { 
+            background: none; color: #5f6368; border: 1px solid #dadce0; padding: 4px 12px; 
+            border-radius: 4px; font-size: 11px; cursor: pointer;
+        }
+        .done-btn:hover { background: #f1f3f4; color: #202124; }
         
-        /* Updated identity banner to show room code */
-        #identity-banner { background: #f8f9fa; padding: 10px; border-radius: 6px; font-size: 12px; color: #555; margin-bottom: 20px; text-align: center; border: 1px solid #eee;}
+        #identity-banner { font-size: 11px; color: #70757a; margin-bottom: 20px; text-align: center; line-height: 1.4; }
     </style>
 </head>
 <body>
     
-    <div id="identity-banner">⏳ Loading Room Info...</div>
-    <button id="btn-raise" disabled>🙋 Raise Hand</button>
+    <div id="identity-banner">Connecting to Google Meet...</div>
+    
+    <div class="controls">
+        <button id="btn-raise" disabled>🙋 Raise Hand</button>
+        <button id="btn-robot" disabled>🤖 Add Robot (Test)</button>
+    </div>
 
     <h2>Speaking Queue</h2>
     <ul id="queue-list">
-        <li style="color: #666; font-size: 14px;">⏳ Connecting...</li>
+        <li style="color: #70757a; font-size: 13px; padding-top: 10px;">Queue is empty</li>
     </ul>
 
     <script type="module">
@@ -55,11 +74,9 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        
-        // We will define this dynamically once we know the Meet URL
         let queueRef; 
 
-        // --- IDENTITY: Generate UUID ---
+        // Generate Identity
         let myId = localStorage.getItem("smoothMeetUUID");
         if (!myId) {
             myId = "User-" + crypto.randomUUID().split('-')[0];
@@ -68,36 +85,29 @@
 
         async function initAddon() {
             try {
-                // Initialize Meet Add-on UI
                 const session = await meet.addon.createAddonSession({
                     cloudProjectNumber: '139985780449' 
                 });
                 
-                // Get the Client Object
                 const sidePanelClient = await session.createSidePanelClient();
-
                 const meetingInfo = await sidePanelClient.getMeetingInfo();
-                const roomCode = meetingInfo.meetingCode; // e.g., "abc-defg-hij"
+                const roomCode = meetingInfo.meetingCode;
 
-                // Create a dynamic Firebase path specific to this meeting
                 queueRef = ref(db, `meetings/${roomCode}/queue`);
 
-                // Update UI to show we successfully grabbed the room code
                 document.getElementById('identity-banner').innerHTML = `
-                    <strong>ID:</strong> ${myId} <br>
-                    <strong>Room:</strong> ${roomCode}
+                    <b>ID:</b> ${myId} &nbsp; | &nbsp; <b>Room:</b> ${roomCode}
                 `;
 
-                // Enable button
                 document.getElementById('btn-raise').disabled = false;
+                document.getElementById('btn-robot').disabled = false;
 
-                // --- FIREBASE: Listen for Queue Updates (Same logic as before) ---
                 onValue(queueRef, (snapshot) => {
                     const queueListEl = document.getElementById('queue-list');
                     queueListEl.innerHTML = ""; 
 
                     if (!snapshot.exists()) {
-                        queueListEl.innerHTML = '<li style="color: #666; font-size: 14px;">Queue is currently empty.</li>';
+                        queueListEl.innerHTML = '<li style="color: #70757a; font-size: 13px; padding-top: 10px;">Queue is empty</li>';
                         document.getElementById('btn-raise').disabled = false; 
                         return;
                     }
@@ -120,34 +130,37 @@
                         if (item.name === myId) li.classList.add('my-item');
                         
                         li.innerHTML = `
-                            <span><strong>${index + 1}.</strong> ${item.name}</span>
+                            <span>${index + 1}. ${item.name}</span>
                             <button class="done-btn" data-key="${item.key}">Done</button>
                         `;
                         queueListEl.appendChild(li);
                     });
 
+                    // Event delegation for "Done" buttons
                     document.querySelectorAll('.done-btn').forEach(btn => {
                         btn.addEventListener('click', (e) => {
                             const itemKey = e.target.getAttribute('data-key');
-                            // Make sure to delete from the dynamic path!
                             remove(ref(db, `meetings/${roomCode}/queue/${itemKey}`));
                         });
                     });
                 });
 
             } catch (error) {
-                console.error("SDK Error:", error);
-                document.getElementById('queue-list').innerHTML = '<li style="color: red;">Failed to connect to Meet.</li>';
+                console.error("Add-on init failed:", error);
             }
         }
 
-        // --- FIREBASE: Send to dynamic Queue ---
+        // Logic for Real User
         document.getElementById('btn-raise').addEventListener('click', () => {
             if (!queueRef) return;
-            push(queueRef, {
-                name: myId,
-                timestamp: Date.now()
-            });
+            push(queueRef, { name: myId, timestamp: Date.now() });
+        });
+
+        // Logic for Robot Tester
+        document.getElementById('btn-robot').addEventListener('click', () => {
+            if (!queueRef) return;
+            const robotNum = Math.floor(Math.random() * 1000);
+            push(queueRef, { name: "🤖 Robot-" + robotNum, timestamp: Date.now() });
         });
 
         initAddon();
