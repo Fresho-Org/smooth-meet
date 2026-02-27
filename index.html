@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meeting Queue Prototype</title>
+    <script src="https://www.gstatic.com/meet/add-ons/1.0/meet.addons.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    
+    <h1>Hello World 🌍</h1>
+    <p>The queue prototype is alive.</p>
+
+    <script>
+        // 2. Initialize the Add-on to tell Meet this iframe is ready
+        async function initAddon() {
+            try {
+                // Creates the session bridge between your iframe and Google Meet
+                const session = await meet.addon.createAddonSession({
+                    cloudProjectNumber: 'WILL_ADD_LATER' // We will get this from Google Cloud
+                });
+                
+                // Tells Meet to render this as a side panel
+                await session.createSidePanelClient();
+                console.log("Add-on initialized successfully!");
+
+            } catch (error) {
+                console.error("Failed to initialize Meet Add-on:", error);
+            }
+        }
+
+        // Run on load
+        window.onload = initAddon;
+    </script>
+</body>
+</html>
