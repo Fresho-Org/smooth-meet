@@ -233,7 +233,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, push, onValue, remove, limitToLast, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        const GOOGLE_CLIENT_ID = "139985780449-fbb9qvek9pe0tno7382k10t6lukrg2ji.apps.googleusercontent.com";
+        const GOOGLE_CLIENT_ID = "923559797891-3hb1p0ferqpss4japg6or695n45ttcvk.apps.googleusercontent.com";
         const SIGNALS = {
             PROCESS: { id: 'PROCESS', priority: 0, label: 'Process Point', icon: '⚙️', tip: 'Request alternative process: reconvening, breakout groups, etc.' },
             CLARIFY: { id: 'CLARIFY', priority: 1, label: 'Clarify', icon: '❓', tip: 'Quick question to clarify what was said.' },
@@ -285,7 +285,7 @@
                     google.accounts.id.prompt();
                 }
 
-                const session = await meet.addon.createAddonSession({ cloudProjectNumber: '139985780449' });
+                const session = await meet.addon.createAddonSession({ cloudProjectNumber: '923559797891' });
                 const sidePanelClient = await session.createSidePanelClient();
                 const meetingInfo = await sidePanelClient.getMeetingInfo();
                 roomCode = meetingInfo.meetingCode;
