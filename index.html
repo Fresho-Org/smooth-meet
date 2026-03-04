@@ -290,11 +290,6 @@
                 const meetingInfo = await sidePanelClient.getMeetingInfo();
                 roomCode = meetingInfo.meetingCode;
 
-                // Triggers the "Join Activity" banner for everyone in the room.
-                try {
-                    await sidePanelClient.startActivity({ mainStageUrl: window.location.href });
-                } catch (e) { console.log("Activity banner already active."); }
-
                 queueRef = ref(db, `meetings/${roomCode}/queue`);
                 chatRef = ref(db, `meetings/${roomCode}/chat`);
 
