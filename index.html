@@ -231,7 +231,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove, limitToLast, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, push, set, onValue, remove, limitToLast, query } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const GOOGLE_CLIENT_ID = "923559797891-3hb1p0ferqpss4japg6or695n45ttcvk.apps.googleusercontent.com";
         const SIGNALS = {
@@ -257,6 +257,7 @@
 
         let myId = localStorage.getItem("smoothMeetName") || "Anonymous";
         let myPhoto = localStorage.getItem("smoothMeetPhoto") || "";
+        let myQueueKey = null;
 
         function decodeJwt(token) { return JSON.parse(window.atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); }
 
@@ -358,7 +359,10 @@
         window.deleteItem = (key) => remove(ref(db, `meetings/${roomCode}/queue/${key}`));
 
         Object.keys(SIGNALS).forEach(id => {
-            document.getElementById(`btn-${id}`).onclick = () => push(queueRef, { name: myId, photo: myPhoto, timestamp: Date.now(), type: id });
+            document.getElementById(`btn-${id}`).onclick = () => {
+                const userKey = myId.replace(/[.#$\/\[\]]/g, '_');
+                set(ref(db, `meetings/${roomCode}/queue/${userKey}`), { name: myId, photo: myPhoto, timestamp: Date.now(), type: id });
+            };
         });
 
         initAddon();
